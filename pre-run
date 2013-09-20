@@ -1,0 +1,12 @@
+#!/bin/sh
+
+DIR=`pwd`
+
+exec 2>&1
+
+if [ -z $ENVDIR_RUN ]; then
+    export ENVDIR_RUN=1
+    exec chpst -e $DIR/env $0
+fi
+
+su hubdoc -c "${NPM:-/usr/bin/npm} install"

@@ -1,0 +1,5 @@
+#! /bin/sh
+export LOGDIR=./main
+mkdir -p $LOGDIR
+exec svlogd -ttt $LOGDIR
+
