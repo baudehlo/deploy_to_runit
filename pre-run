@@ -10,4 +10,6 @@ if [ -z $ENVDIR_RUN ]; then
     exec chpst -e $DIR/env $0
 fi
 
+echo "Running npm ($NPM) install as $USER"
+
 exec chpst -u $USER ${NPM:-/usr/bin/npm} install
