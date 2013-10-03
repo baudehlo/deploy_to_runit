@@ -1,4 +1,5 @@
 {
+  "--": "For further details see https://github.com/andris9/Nodemailer#setting-up-smtp",
   "service": "Gmail",
   "auth": {
     "user": "gmail.user@gmail.com",
