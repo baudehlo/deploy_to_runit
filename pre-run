@@ -10,4 +10,4 @@ if [ -z $ENVDIR_RUN ]; then
     exec chpst -e $DIR/env $0
 fi
 
-chpst -u $USER ${NPM:-/usr/bin/npm} install
+exec chpst -u $USER ${NPM:-/usr/bin/npm} install
