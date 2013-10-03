@@ -5,6 +5,7 @@ USER=`stat -c %U .`
 
 exec 2>&1
 
+echo "Checking status of ENVDIR_RUN:$ENVDIR_RUN"
 if [ -z $ENVDIR_RUN ]; then
     export ENVDIR_RUN=1
     echo "Reading envdir"
