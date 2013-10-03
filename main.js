@@ -8,7 +8,7 @@ var fs            = require('fs');
 var request       = require('request');
 var nodemailer    = require('nodemailer');
 
-var mail_transport = nodemailer.createTransport("SMTP", JSON.parse(fs.readFileSync(__dirname + '/config/smtp_transport_options.json', 'utf8')));
+var mail_transport = nodemailer.createTransport("SMTP", JSON.parse(fs.readFileSync(__dirname + '/config/smtp_transport.json', 'utf8')));
 
 var port          = process.env['PORT'] || 10001;
 var localtz       = process.env['LOCALTIMEZONE'] || 'UTC';
