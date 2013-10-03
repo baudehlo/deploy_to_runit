@@ -8,13 +8,13 @@ var fs            = require('fs');
 var request       = require('request');
 var nodemailer    = require('nodemailer');
 
-var mail_transport = nodemailer.createTransport("SMTP", JSON.parse(fs.readFileSync(__dirname + '/config/smtp_transport_options.conf', 'utf8')));
-var mail_defaults  = JSON.parse(fs.readFileSync(__dirname + '/config/mail_message_defaults.conf', 'utf8'));
+var mail_transport = nodemailer.createTransport("SMTP", JSON.parse(fs.readFileSync(__dirname + '/config/smtp_transport_options.json', 'utf8')));
+var mail_defaults  = JSON.parse(fs.readFileSync(__dirname + '/config/mail_message_defaults.json', 'utf8'));
 
 var port          = process.env['PORT'] || 10001;
 var localtz       = process.env['LOCALTIMEZONE'] || 'UTC';
 
-var config_options = JSON.parse(fs.readFileSync(__dirname + '/config/main.conf', 'utf8'));
+var config_options = JSON.parse(fs.readFileSync(__dirname + '/config/main.json', 'utf8'));
 var remote_hosts = config_options.remote_hosts || [];
 var branch_map = config_options.branch_map || { 'master': '/var/apps' };
 var git_user = config_options.git_user || 'deploy';
