@@ -67,7 +67,7 @@ app.post('/', function (req, res) {
 });
 
 var run_command = function (command, params, callback) {
-    var cmd = child_process.spawn(command, params);
+    var cmd = child_process.spawn(command, params, { env: {} });
     cmd.stdout.pipe(process.stdout);
     cmd.stderr.pipe(process.stderr);
     cmd.on('exit', function (code) {
