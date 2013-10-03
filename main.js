@@ -112,7 +112,8 @@ var prerun = function(payload) {
             if (err) return handle_error(err, payload);
             if (should_restart_server(payload)) {
                 sv_restart(payload);
-            } else {
+            }
+            else {
                 console.log('we\'ve been instructed not to restart the server');
                 if (payload['request_origin'] !== 'deploy_to_runit') {
                     post_payload(payload, function (remote_posts) {
