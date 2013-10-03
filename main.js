@@ -153,7 +153,7 @@ var post_payload = function(payload, cb) {
 
     remote_hosts.forEach(function(remote_host) {
         if (remote_host['hostname'] !== os.hostname()) {
-            var url = 'http://' + remote_host['hostname'] + ':' + remote_host['port'];
+            var url = 'http://' + remote_host['hostname'] + ':' + (remote_host['port'] || port);
             request.post(url, {
                 form: {payload: JSON.stringify(payload)}
             }, function(err, res, body) {

@@ -82,3 +82,85 @@ It should show that deploy_to_runit is running (as is the logger).
 Now open up your firewall to the Github webhook IP addresses to port 10001.
 
 Then add in the server as a webhook, and click test while tailing the logs.
+
+Configuration
+-------------
+
+The smtp_transport.json is just a JSON representation of the settings available
+to nodemailer at https://github.com/andris9/Nodemailer#setting-up-smtp
+
+In main.json the following options work:
+
+* email_to (required) - the email to send success/failure messages to
+* branch_map - a hash of branch to root folder name mappings. Default: `{"master": "/var/apps"}`
+* remote_hosts - a list of remote hosts to send the payload to (for multi-server deployment). Default: [].
+* git_user - the username to run commands as. Default: deploy
+* git_command - the path to git. Default: /usr/bin/git
+* sv_command - the path to "sv". Default: /usr/bin/sv
+* dont_restart_server - a list of services not to restart after updating. Default: [].
+
+Multi-Server Deployment
+-----------------------
+
+To deploy to multiple servers, have one main deployment server receiving from Github,
+and then fan out that deployment to your other servers, after your "pre-run" has
+successfully run (allowing you to "stage" your update). To do this add the
+`remote_hosts` configuration option as follows:
+
+    "remote_hosts": [
+        { "hostname": "app1" },
+        { "hostname": "app2" },
+        { "hostname": "app3" },
+        { "hostname": "app4" },
+        { "hostname": "app5" }
+    ]
+
+Now just run deploy_to_runit on all 5 servers, but have Github point at just
+one (feel free to load balance where it goes first). Then once successfully
+updated and pre-run has run OK, it will deploy to the other servers (with a
+flag that tells them not to re-deploy it).
+
+Branches
+--------
+
+By default deploy_to_runit deploys the "master" branch, though this can be
+changed, as can deciding to have a folder which runs the "staging" branches
+of your projects. Simply setup the branch_map as follows:
+
+    "branch_map": {
+        "master": "/var/apps",
+        "staging": "/var/staging-apps"
+    }
+
+And make sure you checkout the staging branch of your apps into the
+/var/staging-apps folder.
+
+Thanks
+------
+
+Thanks to Hubdoc (http://www.hubdoc.com/) for releasing this open source.
+
+License
+-------
+
+This project is released under the MIT license as follows:
+
+Copyright (C) 2013 Matt Sergeant, Hubdoc Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
