@@ -89,7 +89,12 @@ Configuration
 The smtp_transport.json is just a JSON representation of the settings available
 to nodemailer at https://github.com/andris9/Nodemailer#setting-up-smtp
 
-In main.json the following options work:
+Warning - do not commit your password to github when you setup a fork of
+deploy_to_runit as it will be visible to all. If you need to do that, make it
+a private repository, but you really shouldn't anyway. Make that part of some
+other configuration system such as Chef.
+
+In main.json the following options are available:
 
 * email_to (required) - the email to send success/failure messages to
 * branch_map - a hash of branch to root folder name mappings. Default: `{"master": "/var/apps"}`
