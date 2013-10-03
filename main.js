@@ -17,7 +17,9 @@ var localtz       = process.env['LOCALTIMEZONE'] || 'UTC';
 var config_options = JSON.parse(fs.readFileSync(__dirname + '/config/main.conf', 'utf8'));
 var remote_hosts = config_options.remote_hosts || [];
 var branch_map = config_options.branch_map || { 'master': '/var/apps' };
-var git_user = config_options.git_user || 'hddeploy';
+var git_user = config_options.git_user || 'deploy';
+var git_command = config_options.git_command || '/usr/bin/git';
+var sv_command = config_options.sv_command || '/usr/bin/sv';
 
 app.use(express.bodyParser());
 
@@ -40,7 +42,7 @@ app.post('/', function (req, res) {
 
     if (!(branch in branch_map)) {
         console.log('we\'re ignoring pushes to the ' + branch + ' branch');
-        if (payload['request_origin'] !== 'hddeploy') {
+        if (payload['request_origin'] !== 'deploy_to_runit') {
             post_payload(payload);
         }
         return res.status(200).send('we\'re ignoring pushes to the ' + branch + ' branch');
@@ -55,9 +57,9 @@ app.post('/', function (req, res) {
         
     process.chdir(branch_map[branch] + '/' + repo);
 
-    run_command('/bin/su', [git_user, '-c', '/usr/bin/git fetch'], function (err) {
+    run_command('chpst', ['-u', git_user, git_command, 'fetch'], function (err) {
         if (err) return handle_error(err, payload);
-        run_command('/bin/su', [git_user, '-c', '/usr/bin/git checkout ' + branch], function (err) {
+        run_command('chpst', ['-u', git_user, git_command, 'checkout', branch], function (err) {
             if (err) return handle_error(err, payload);
             merge(branch, payload, repo); 
         });
@@ -78,7 +80,7 @@ var run_command = function (command, params, callback) {
 }
 
 var merge = function(branch, payload, repo) {
-    run_command('/bin/su', [git_user, '-c', '/usr/bin/git merge origin/' + branch], function (err) {
+    run_command('chpst', ['-u', git_user, git_command, 'merge', 'origin/' + branch], function (err) {
         if (err) return handle_error(err, payload);
         env(payload, repo);
     });
@@ -103,16 +105,16 @@ var env = function(payload, repo) {
 var prerun = function(payload) {
     fs.exists('pre-run', function (exists) {
         if (!exists) {
-            return sv_kill(payload);
+            return sv_restart(payload);
         }
         console.log('Executing pre-run file');
         run_command('./pre-run', [], function (err) {
             if (err) return handle_error(err, payload);
             if (should_restart_server(payload)) {
-                sv_kill(payload);
+                sv_restart(payload);
             } else {
                 console.log('we\'ve been instructed not to restart the server');
-                if (payload['request_origin'] !== 'hddeploy') {
+                if (payload['request_origin'] !== 'deploy_to_runit') {
                     post_payload(payload, function (remote_posts) {
                         if (parse_branch_name(payload) === 'master') {
                             send_email(null, payload, remote_posts);
@@ -124,13 +126,13 @@ var prerun = function(payload) {
     });
 }
 
-var sv_kill = function(payload) {
-    run_command('/usr/bin/sv', ['kill', '.'], function (err) {
+var sv_restart = function(payload) {
+    run_command(sv_command, ['force-restart', '.'], function (err) {
         if (err) return handle_error(err, payload);
         console.log('Restarted');
         console.log('Thanks');
 
-        if (payload['request_origin'] !== 'hddeploy') {
+        if (payload['request_origin'] !== 'deploy_to_runit') {
             post_payload(payload, function (remote_posts) {
                 if (parse_branch_name(payload) === 'master') {
                     send_email(null, payload, remote_posts);
@@ -146,7 +148,7 @@ var post_payload = function(payload, cb) {
     console.log('posting payload to remote servers');
 
     // indicate that these POSTS originate from our servers, not Github
-    payload['request_origin'] = 'hddeploy';
+    payload['request_origin'] = 'deploy_to_runit';
 
     remote_hosts.forEach(function(remote_host) {
         if (remote_host['hostname'] !== os.hostname()) {
@@ -171,7 +173,7 @@ var post_payload = function(payload, cb) {
 
 var send_email = function(err, payload, remote_posts) {
     var email = JSON.parse(JSON.stringify(mail_defaults));
-    email.from = 'hddeploy: ' + os.hostname() + '<' + email.from + '>';
+    email.from = 'deploy: ' + os.hostname() + '<' + email.from + '>';
 
     var repo = payload['repository']['name'];
 
