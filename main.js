@@ -205,9 +205,12 @@ var send_email = function(err, payload, remote_posts) {
         });
     }
     
-    sender.send(email, function (success, message) {
-        if (!success) {
-            console.log("Sendgrid failed: " + message);
+    mail_transport.sendMail(email, function (error, response) {
+        if (error) {
+            console.log("Sending mail failed: " + error);
+        }
+        else {
+            console.log("Email sent: " + response.message);
         }
     });
 }
