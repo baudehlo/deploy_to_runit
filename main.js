@@ -199,7 +199,7 @@ var post_payload = function(payload, cb) {
 var send_email = function(err, payload, remote_posts) {
     var email = { to: config_options.email_to };
 
-    email.from = 'deploy: ' + os.hostname() + '<' + config_options.email_from + '>';
+    email.from = '"deploy:' + os.hostname() + '" <' + config_options.email_from + '>';
 
     var repo = payload['repository']['name'];
 
