@@ -61,10 +61,12 @@ And then install the dependencies:
     $ npm install
 
 Now we need to set two configuration options - your outbound email settings
-which are in config/smtp_transport.json, and an email address to receive emails
-when new software is deployed. Add the key `email_to` to the file config/main.json.
-It can be a comma separated list if you need multiple people to receive deployment
-emails.
+which are in config/smtp\_transport.json, and an email address to receive emails
+when new software is deployed. Add the keys `email\_to` and `email\_from` to
+the file config/main.json.
+
+The `email\_to` parameter can be a comma separated list if you need multiple
+addresses to receive deployment emails.
 
 Now we can check if it will run:
 

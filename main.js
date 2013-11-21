@@ -15,6 +15,7 @@ var localtz       = process.env['LOCALTIMEZONE'] || 'UTC';
 
 var config_options = JSON.parse(fs.readFileSync(__dirname + '/config/main.json', 'utf8'));
 if (!config_options.email_to) throw "No email_to setting in main.json";
+if (!config_options.email_from) throw "No email_from setting in main.json";
 var remote_hosts = config_options.remote_hosts || [];
 var branch_map = config_options.branch_map || { 'master': '/var/apps' };
 var git_user = config_options.git_user || 'deploy';
@@ -198,7 +199,7 @@ var post_payload = function(payload, cb) {
 var send_email = function(err, payload, remote_posts) {
     var email = { to: config_options.email_to };
 
-    email.from = 'deploy: ' + os.hostname() + '<' + email.from + '>';
+    email.from = 'deploy: ' + os.hostname() + '<' + config_options.email_from + '>';
 
     var repo = payload['repository']['name'];
 
