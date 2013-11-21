@@ -41,6 +41,7 @@ app.post('/', function (req, res) {
     console.log('I\'ve got some JSON: ' + util.inspect(payload));
 
     branch = parse_branch_name(payload);
+    repo = payload['repository']['name'];
 
     if (!(branch in branch_map)) {
         console.log('we\'re ignoring pushes to the ' + branch + ' branch');
@@ -70,8 +71,6 @@ var start = function() {
     var payload = item.payload;
     var branch  = item.branch;
     var repo    = item.repo;
-
-    repo = payload['repository']['name'];
     
     console.log("Going to repository: " + repo + "(" + branch + ")");
 
