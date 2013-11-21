@@ -21,6 +21,8 @@ var git_user = config_options.git_user || 'deploy';
 var git_command = config_options.git_command || '/usr/bin/git';
 var sv_command = config_options.sv_command || '/usr/bin/sv';
 
+var request_queue = [];
+
 app.use(express.bodyParser());
 
 app.post('/', function (req, res) {
@@ -39,6 +41,7 @@ app.post('/', function (req, res) {
     console.log('I\'ve got some JSON: ' + util.inspect(payload));
 
     branch = parse_branch_name(payload);
+    repo = payload['repository']['name'];
 
     if (!(branch in branch_map)) {
         console.log('we\'re ignoring pushes to the ' + branch + ' branch');
@@ -51,20 +54,36 @@ app.post('/', function (req, res) {
     console.log('Sending back 200 response');
     res.status(200).send('OK');
 
-    repo = payload['repository']['name'];
+    // add request to queue
+    request_queue.push({
+        payload: payload,
+        branch:  branch,
+        repo:    repo
+    });
+
+    if (request_queue.length === 1) {
+        start();
+    }
+});
+
+var start = function() {
+    var item    = request_queue[0];
+    var payload = item.payload;
+    var branch  = item.branch;
+    var repo    = item.repo;
     
     console.log("Going to repository: " + repo + "(" + branch + ")");
-        
+
     process.chdir(branch_map[branch] + '/' + repo);
 
     run_command('chpst', ['-u', git_user, git_command, 'fetch'], function (err) {
-        if (err) return handle_error(err, payload);
+        if (err) return handle_error(err, payload, next_queue_item);
         run_command('chpst', ['-u', git_user, git_command, 'checkout', branch], function (err) {
-            if (err) return handle_error(err, payload);
+            if (err) return handle_error(err, payload, next_queue_item);
             merge(branch, payload, repo); 
         });
     });
-});
+}
 
 var run_command = function (command, params, callback) {
     var cmd = child_process.spawn(command, params, { env: {} });
@@ -81,7 +100,7 @@ var run_command = function (command, params, callback) {
 
 var merge = function(branch, payload, repo) {
     run_command('chpst', ['-u', git_user, git_command, 'merge', 'origin/' + branch], function (err) {
-        if (err) return handle_error(err, payload);
+        if (err) return handle_error(err, payload, next_queue_item);
         env(payload, repo);
     });
 }
@@ -109,7 +128,7 @@ var prerun = function(payload) {
         }
         console.log('Executing pre-run file');
         run_command('./pre-run', [], function (err) {
-            if (err) return handle_error(err, payload);
+            if (err) return handle_error(err, payload, next_queue_item);
             if (should_restart_server(payload)) {
                 sv_restart(payload);
             }
@@ -122,6 +141,7 @@ var prerun = function(payload) {
                         }
                     });
                 }
+                next_queue_item();
             }
         });
     });
@@ -129,7 +149,7 @@ var prerun = function(payload) {
 
 var sv_restart = function(payload) {
     run_command(sv_command, ['force-restart', '.'], function (err) {
-        if (err) return handle_error(err, payload);
+        if (err) return handle_error(err, payload, next_queue_item);
         console.log('Restarted');
         console.log('Thanks');
 
@@ -140,6 +160,7 @@ var sv_restart = function(payload) {
                 }
             });
         }
+        next_queue_item();
     });
 }
 
@@ -157,9 +178,11 @@ var post_payload = function(payload, cb) {
             request.post(url, {
                 form: {payload: JSON.stringify(payload)}
             }, function(err, res, body) {
-                if (err) return handle_error(err, payload);
+                // dont try to process next queue item on these errors
+                // because we already called it
+                if (err) return handle_error(err, payload, null);
                 if (res.statusCode != 200) {
-                    return handle_error("Non-200 status code returned from " + remote_host, payload);
+                    return handle_error("Non-200 status code returned from " + remote_host, payload, null);
                 }
                 console.log('successfully posted to ' + url);
             });
@@ -233,9 +256,18 @@ var should_restart_server = function(payload) {
     return !dont_restart;
 }
 
-var handle_error = function(err, payload) {
+var handle_error = function(err, payload, next_queue_item) {
     console.log(err);
     send_email(err, payload);
+    if (next_queue_item) next_queue_item();
+}
+
+var next_queue_item = function() {
+    request_queue.shift();
+    if (request_queue.length) {
+        console.log('Processing next queue item');
+        start(); 
+    }
 }
 
 app.listen(port);
