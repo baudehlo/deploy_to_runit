@@ -16,15 +16,20 @@ var localtz       = process.env['LOCALTIMEZONE'] || 'UTC';
 var config_options = JSON.parse(fs.readFileSync(__dirname + '/config/main.json', 'utf8'));
 if (!config_options.email_to) throw "No email_to setting in main.json";
 if (!config_options.email_from) throw "No email_from setting in main.json";
-var remote_hosts = config_options.remote_hosts || [];
-var branch_map = config_options.branch_map || { 'master': '/var/apps' };
-var git_user = config_options.git_user || 'deploy';
-var git_command = config_options.git_command || '/usr/bin/git';
-var sv_command = config_options.sv_command || '/usr/bin/sv';
 
 var request_queue = [];
 
 app.use(express.bodyParser());
+
+fs.watch(__dirname + '/config/main.json', {persistent: false}, function () {
+    config_options = JSON.parse(fs.readFileSync(__dirname + '/config/main.json', 'utf8'));
+    if (!config_options.email_to) throw "No email_to setting in main.json";
+    if (!config_options.email_from) throw "No email_from setting in main.json";
+});
+
+fs.watch(__dirname + '/config/smtp_transport.json', {persistent: false}, function () {
+    mail_transport = nodemailer.createTransport("SMTP", JSON.parse(fs.readFileSync(__dirname + '/config/smtp_transport.json', 'utf8')));
+});
 
 app.post('/', function (req, res) {
     var payload;
@@ -44,6 +49,7 @@ app.post('/', function (req, res) {
     branch = parse_branch_name(payload);
     repo = payload['repository']['name'];
 
+    var branch_map = get_config(payload, 'branch_map', { 'master': '/var/apps' });
     if (!(branch in branch_map)) {
         console.log('we\'re ignoring pushes to the ' + branch + ' branch');
         if (payload['request_origin'] !== 'deploy_to_runit') {
@@ -75,15 +81,23 @@ var start = function() {
     
     console.log("Going to repository: " + repo + "(" + branch + ")");
 
+    var branch_map = get_config(payload, 'branch_map', { 'master': '/var/apps' });
     process.chdir(branch_map[branch] + '/' + repo);
 
-    run_command('chpst', ['-u', git_user, git_command, 'fetch'], function (err) {
+    run_git(payload, ['fetch'], function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
-        run_command('chpst', ['-u', git_user, git_command, 'checkout', branch], function (err) {
+        run_git(payload, ['checkout', branch], function (err) {
             if (err) return handle_error(err, payload, next_queue_item);
             merge(branch, payload, repo); 
         });
     });
+}
+
+var run_git = function (payload, options, cb) {
+    var git_user = get_config(payload, 'git_user', 'deploy');
+    var git_command = get_config(payload, 'git_command', '/usr/bin/git');
+    var command = ['-u', git_user, git_command].concat(options);
+    run_command('chpst', command, cb);
 }
 
 var run_command = function (command, params, callback) {
@@ -100,7 +114,7 @@ var run_command = function (command, params, callback) {
 }
 
 var merge = function(branch, payload, repo) {
-    run_command('chpst', ['-u', git_user, git_command, 'merge', 'origin/' + branch], function (err) {
+    run_git(payload, ['merge', 'origin/' + branch], function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
         env(payload, repo);
     });
@@ -148,8 +162,23 @@ var prerun = function(payload) {
     });
 }
 
+function get_config (payload, key, def) {
+    var repo = payload['repository']['name'];
+
+    // Per-project config
+    if (config_options.projects && config_options.projects[repo] && config_options.projects[repo][key]) {
+        return config_options.projects[repo][key];
+    }
+    if (config_options[key]) {
+        return config_options[key];
+    }
+    return def;
+}
+
 var sv_restart = function(payload) {
-    run_command(sv_command, ['force-restart', '.'], function (err) {
+    var restart_command = get_config(payload, 'restart_command', 'force-restart');
+    var sv_command = get_config(payload, 'sv_command', '/usr/bin/sv');
+    run_command(sv_command, [restart_command, '.'], function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
         console.log('Restarted');
         console.log('Thanks');
@@ -172,6 +201,8 @@ var post_payload = function(payload, cb) {
 
     // indicate that these POSTS originate from our servers, not Github
     payload['request_origin'] = 'deploy_to_runit';
+
+    var remote_hosts = get_config(payload, 'remote_hosts', []);
 
     remote_hosts.forEach(function(remote_host) {
         if (remote_host['hostname'] !== os.hostname()) {
@@ -197,9 +228,9 @@ var post_payload = function(payload, cb) {
 }
 
 var send_email = function(err, payload, remote_posts) {
-    var email = { to: config_options.email_to };
+    var email = { to: get_config(payload, 'email_to') };
 
-    email.from = '"deploy:' + os.hostname() + '" <' + config_options.email_from + '>';
+    email.from = '"deploy:' + os.hostname() + '" <' + get_config(payload, 'email_from') + '>';
 
     var repo = payload['repository']['name'];
 
@@ -246,13 +277,16 @@ var parse_branch_name = function(payload) {
 }
 
 var should_restart_server = function(payload) {
-    if (!config_options.dont_restart_server) return true;
+    var dont_restart = get_config(payload, 'dont_restart_server');
+    if (!dont_restart) return true;
 
     var repo = payload['repository']['name'];
 
-    var dont_restart = config_options.dont_restart_server.some(function (val) {
-        return val === repo;
-    });
+    if (typeof dont_restart == 'array') {
+        dont_restart = dont_restart.some(function (val) {
+            return val === repo;
+        });
+    }
 
     return !dont_restart;
 }
