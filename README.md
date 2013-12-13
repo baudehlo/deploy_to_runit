@@ -100,11 +100,26 @@ In main.json the following options are available:
 
 * email_to (required) - the email to send success/failure messages to
 * branch_map - a hash of branch to root folder name mappings. Default: `{"master": "/var/apps"}`
-* remote_hosts - a list of remote hosts to send the payload to (for multi-server deployment). Default: [].
+* remote_hosts - a list of remote hosts to send the payload to (for multi-server deployment). Default: []
 * git_user - the username to run commands as. Default: deploy
 * git_command - the path to git. Default: /usr/bin/git
 * sv_command - the path to "sv". Default: /usr/bin/sv
-* dont_restart_server - a list of services not to restart after updating. Default: [].
+* restart_command - the command passed to "sv" to restart the server. Default: force-restart
+* dont_restart_server - a list of projects not to restart after updating. Default: []
+
+All options can also appear under a "projects" key which takes the following
+form:
+
+    "projects": {
+        "project-1": {
+            "restart_command": "sigusr2"
+        },
+        "project-2": {
+            "dont_restart_server": true
+        }
+    }
+
+(note there that "dont_restart_server" can be boolean at that level)
 
 Multi-Server Deployment
 -----------------------
