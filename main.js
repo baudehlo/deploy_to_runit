@@ -22,12 +22,14 @@ var request_queue = [];
 app.use(express.bodyParser());
 
 fs.watch(__dirname + '/config/main.json', {persistent: false}, function () {
+    console.log("Reloading main.json");
     config_options = JSON.parse(fs.readFileSync(__dirname + '/config/main.json', 'utf8'));
     if (!config_options.email_to) throw "No email_to setting in main.json";
     if (!config_options.email_from) throw "No email_from setting in main.json";
 });
 
 fs.watch(__dirname + '/config/smtp_transport.json', {persistent: false}, function () {
+    console.log("Reloading smtp_transport.json");
     mail_transport = nodemailer.createTransport("SMTP", JSON.parse(fs.readFileSync(__dirname + '/config/smtp_transport.json', 'utf8')));
 });
 
