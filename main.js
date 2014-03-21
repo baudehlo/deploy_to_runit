@@ -253,7 +253,8 @@ var send_email = function(err, payload, remote_posts) {
             };
         }).reverse();
 
-        email.subject = os.hostname() + ' deployed the latest changes to ' + repo + ': ' + payload.head_commit ? payload.head_commit.message : payload.commits[payload.commits.length - 1].message;
+        email.subject = os.hostname() + ' deployed the latest changes to ' + repo + ': ' + 
+                        (payload.head_commit ? payload.head_commit.message : payload.commits[payload.commits.length - 1].message);
 
         email.text    = os.hostname() + ' deployed the latest changes to ' + repo + '\n'
                          + 'we also posted the payload to the following remotes: ' + remote_posts.join(', ') + '\n\n'
