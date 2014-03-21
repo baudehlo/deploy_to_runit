@@ -49,12 +49,12 @@ app.post('/', function (req, res) {
     console.log('I\'ve got some JSON: ' + util.inspect(payload));
 
     branch = parse_branch_name(payload);
-    repo = payload['repository']['name'];
+    repo = payload.repository.name;
 
     var branch_map = get_config(payload, 'branch_map', { 'master': '/var/apps' });
     if (!(branch in branch_map)) {
         console.log('we\'re ignoring pushes to the ' + branch + ' branch for repo: ' + payload.repository.name);
-        if (payload['request_origin'] !== 'deploy_to_runit') {
+        if (payload.request_origin !== 'deploy_to_runit') {
             post_payload(payload);
         }
         return res.status(200).send('we\'re ignoring pushes to the ' + branch + ' branch for repo: ' + payload.repository.name);
@@ -127,7 +127,7 @@ var env = function(payload, repo) {
         if (!exists) {
             console.log('env does not exist');
         } else {
-            fs.writeFile('env/LASTGITHASH', payload['after'], function (err) {
+            fs.writeFile('env/LASTGITHASH', payload.after ? payload.after : payload.commits[payload.commits.length - 1].raw_node, function (err) {
                 if (err) {
                     console.log(err);
                 }
@@ -151,7 +151,7 @@ var prerun = function(payload) {
             }
             else {
                 console.log('we\'ve been instructed not to restart the server');
-                if (payload['request_origin'] !== 'deploy_to_runit') {
+                if (payload.request_origin !== 'deploy_to_runit') {
                     post_payload(payload, function (remote_posts) {
                         if (parse_branch_name(payload) === 'master') {
                             send_email(null, payload, remote_posts);
@@ -165,7 +165,7 @@ var prerun = function(payload) {
 }
 
 function get_config (payload, key, def) {
-    var repo = payload['repository']['name'];
+    var repo = payload.repository.name;
 
     // Per-project config
     if (config_options.projects && config_options.projects[repo] && config_options.projects[repo][key]) {
@@ -185,7 +185,7 @@ var sv_restart = function(payload) {
         console.log('Restarted');
         console.log('Thanks');
 
-        if (payload['request_origin'] !== 'deploy_to_runit') {
+        if (payload.request_origin !== 'deploy_to_runit') {
             post_payload(payload, function (remote_posts) {
                 if (parse_branch_name(payload) === 'master') {
                     send_email(null, payload, remote_posts);
@@ -202,7 +202,7 @@ var post_payload = function(payload, cb) {
     console.log('posting payload to remote servers');
 
     // indicate that these POSTS originate from our servers, not Github
-    payload['request_origin'] = 'deploy_to_runit';
+    payload.request_origin = 'deploy_to_runit';
 
     var remote_hosts = get_config(payload, 'remote_hosts', []);
 
@@ -234,24 +234,26 @@ var send_email = function(err, payload, remote_posts) {
 
     email.from = '"deploy:' + os.hostname() + '" <' + get_config(payload, 'email_from') + '>';
 
-    var repo = payload['repository']['name'];
+    var repo = payload.repository.name;
 
     if (err) {
         email.subject = 'Failed to deploy latest changes to ' + repo;
         email.text    = err.toString();
     }
     else {
-        var push_time = new Date(payload['repository']['pushed_at'] * 1000).setTimezone(localtz).hours().toString("MMM d, yyyy, HH:mm");
+        var push_time = payload.repository.pushed_at ? 
+                            new Date(payload.repository.pushed_at * 1000).setTimezone(localtz).hours().toString("MMM d, yyyy, HH:mm") :
+                            new Date();
         var deploy_time = new Date().setTimezone(localtz).hours().toString("MMM d, yyyy, HH:mm");
-        var pusher = payload['pusher']['email'];
-        var commits = payload['commits'].map(function (commit) {
+        var pusher = payload.pusher ? payload.pusher.email : payload.user;
+        var commits = payload.commits.map(function (commit) {
             return {
-                id      : commit.id.slice(0, 7),
+                id      : commit.id ? commit.id.slice(0, 7) : commit.node,
                 message : commit.message
             };
         }).reverse();
 
-        email.subject = os.hostname() + ' deployed the latest changes to ' + repo + ': ' + payload['head_commit']['message'];
+        email.subject = os.hostname() + ' deployed the latest changes to ' + repo + ': ' + payload.head_commit ? payload.head_commit.message : payload.commits[payload.commits.length - 1].message;
 
         email.text    = os.hostname() + ' deployed the latest changes to ' + repo + '\n'
                          + 'we also posted the payload to the following remotes: ' + remote_posts.join(', ') + '\n\n'
@@ -274,7 +276,7 @@ var send_email = function(err, payload, remote_posts) {
 }
 
 var parse_branch_name = function(payload) {
-    var branch_match = /^refs\/heads\/(.*)$/.exec(payload['ref']);
+    var branch_match = /^refs\/heads\/(.*)$/.exec(payload.ref);
     if (branch_match) {
         return branch_match[1];
     }
@@ -292,7 +294,7 @@ var should_restart_server = function(payload) {
     var dont_restart = get_config(payload, 'dont_restart_server');
     if (!dont_restart) return true;
 
-    var repo = payload['repository']['name'];
+    var repo = payload.repository.name;
 
     if (typeof dont_restart == 'array') {
         dont_restart = dont_restart.some(function (val) {
