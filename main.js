@@ -53,11 +53,11 @@ app.post('/', function (req, res) {
 
     var branch_map = get_config(payload, 'branch_map', { 'master': '/var/apps' });
     if (!(branch in branch_map)) {
-        console.log('we\'re ignoring pushes to the ' + branch + ' branch');
+        console.log('we\'re ignoring pushes to the ' + branch + ' branch for repo: ' + payload.repository.name);
         if (payload['request_origin'] !== 'deploy_to_runit') {
             post_payload(payload);
         }
-        return res.status(200).send('we\'re ignoring pushes to the ' + branch + ' branch');
+        return res.status(200).send('we\'re ignoring pushes to the ' + branch + ' branch for repo: ' + payload.repository.name);
     }
 
     console.log('Sending back 200 response');
@@ -279,8 +279,9 @@ var parse_branch_name = function(payload) {
     // Otherwise came from bitbucket...
     // Since bitbucket might send >1 POST per push, we just return first branch
     // TODO: fix this - we'd need to loop once for each branch potentially.
-    for(var i = 0; i < payload.commits.length; i++){
+    for(var i = payload.commits.length - 1; i >= 0; i--){
         var branch = payload.commits[i].branch;
+        console.log("Branch: "+branch);
         if (branch) return branch;
     }
 }
