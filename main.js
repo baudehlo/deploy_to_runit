@@ -276,6 +276,13 @@ var send_email = function(err, payload, remote_posts) {
 var parse_branch_name = function(payload) {
     var branch_match = /^refs\/heads\/(.*)$/.exec(payload['ref']);
     return branch_match && branch_match[1];
+    // Otherwise came from bitbucket...
+    // Since bitbucket might send >1 POST per push, we just return first branch
+    // TODO: fix this - we'd need to loop once for each branch potentially.
+    for(var i = 0; i < payload.commits.length; i++){
+        var branch = payload.commits[i].branch;
+        if (branch) return branch;
+    }
 }
 
 var should_restart_server = function(payload) {
