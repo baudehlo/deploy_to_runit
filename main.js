@@ -152,10 +152,20 @@ var run_git = function (payload, options, cb) {
 }
 
 var run_command = function (command, params, callback) {
+    var callback_called = false;
     var cmd = child_process.spawn(command, params, { env: {} });
     cmd.stdout.pipe(process.stdout);
     cmd.stderr.pipe(process.stderr);
+    cmd.on('error', function (err) {
+        if (callback_called) return console.log("Error from command:", err);
+        callback_called = true;
+        return callback(new Error("Command: [" + command + " " + params.join(' ') + "] failed with error:" + err));
+    });
     cmd.on('exit', function (code) {
+        if (callback_called) {
+            return console.log("Exit after callback already called");
+        }
+        callback_called = true;
         if (code != 0) {
             return callback(new Error("Command: [" + command + " " + params.join(' ') + "] failed with exit code: " + code));
         }
