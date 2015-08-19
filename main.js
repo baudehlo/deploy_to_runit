@@ -153,6 +153,11 @@ var run_git = function (payload, options, cb) {
 
 var run_command = function (command, params, callback) {
     var callback_called = false;
+    if (/\s/.test(command)) {
+        var command_list = command.split(/\s+/);
+        command = command_list.shift();
+        params = command_list.concat(params);
+    }
     var cmd = child_process.spawn(command, params, { env: {} });
     cmd.stdout.pipe(process.stdout);
     cmd.stderr.pipe(process.stderr);
