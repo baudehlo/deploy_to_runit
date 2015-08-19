@@ -126,7 +126,7 @@ var run_the_tests = function (branch, payload, repo) {
         params = command_list.concat(params);
     }
     var git_user = get_config(payload, 'git_user', 'deploy');
-    var command = ['-u', git_user, test_command].concat(options);
+    var command = ['-u', git_user, test_command];
     run_command('chpst', command, function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
         // Tests passed.
