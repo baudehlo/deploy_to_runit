@@ -86,7 +86,7 @@ var start = function() {
     var test_map = get_config(payload, 'test_map', {});
 
     if (test_map[branch]) {
-        process.chdir(branch_map[branch] + '/' + repo);
+        process.chdir(test_map[branch] + '/' + repo);
 
         return run_tests(branch, payload, repo);
     }
