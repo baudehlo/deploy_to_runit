@@ -95,7 +95,7 @@ var start = function() {
 }
 
 var run_tests = function (branch, payload, repo) {
-    git_fetch_checkout(payload, function (err) {
+    git_fetch_checkout(branch, payload, repo, function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
         run_git(payload, ['merge', 'origin/' + branch], function (err) {
             if (err) return handle_error(err, payload, next_queue_item);
@@ -131,13 +131,13 @@ var run_live = function (branch, payload, repo) {
     var branch_map = get_config(payload, 'branch_map', { 'master': '/var/apps' });
     process.chdir(branch_map[branch] + '/' + repo);
 
-    git_fetch_checkout(payload, function (err) {
+    git_fetch_checkout(branch, payload, repo, function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
         merge(branch, payload, repo);         
     })
 }
 
-var git_fetch_checkout = function (payload, cb) {
+var git_fetch_checkout = function (branch, payload, repo, cb) {
     run_git(payload, ['fetch'], function (err) {
         if (err) return cb(err);
         run_git(payload, ['checkout', branch], cb);
