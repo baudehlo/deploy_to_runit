@@ -83,15 +83,64 @@ var start = function() {
     
     console.log("Going to repository: " + repo + "(" + branch + ")");
 
+    var test_map = get_config(payload, 'test_map', {});
+
+    if (test_map[branch]) {
+        process.chdir(branch_map[branch] + '/' + repo);
+
+        return run_tests(branch, payload, repo);
+    }
+
+    return run_live(branch, payload, repo);
+}
+
+var run_tests = function (branch, payload, repo) {
+    git_fetch_checkout(payload, function (err) {
+        if (err) return handle_error(err, payload, next_queue_item);
+        run_git(payload, ['merge', 'origin/' + branch], function (err) {
+            if (err) return handle_error(err, payload, next_queue_item);
+            prerun_test(branch, payload, repo);
+        });
+    });
+}
+
+var prerun_test = function (branch, payload, repo) {
+    fs.exists('pre-run', function (exists) {
+        if (!exists) {
+            return run_the_tests(branch, payload, repo);
+        }
+        console.log('Executing pre-run file');
+        run_command('./pre-run', [], function (err) {
+            if (err) return handle_error(err, payload, next_queue_item);
+            run_the_tests(branch, payload, repo);
+        });
+    });
+}
+
+var run_the_tests = function (branch, payload, repo) {
+    var test_command = get_config(payload, 'test_command', 'make test');
+    run_command(test_command, [], function (err) {
+        if (err) return handle_error(err, payload, next_queue_item);
+        // Tests passed.
+        console.log("Tests passed. Installing live.");
+        run_live(branch, payload, repo);
+    });
+}
+
+var run_live = function (branch, payload, repo) {
     var branch_map = get_config(payload, 'branch_map', { 'master': '/var/apps' });
     process.chdir(branch_map[branch] + '/' + repo);
 
-    run_git(payload, ['fetch'], function (err) {
+    git_fetch_checkout(payload, function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
-        run_git(payload, ['checkout', branch], function (err) {
-            if (err) return handle_error(err, payload, next_queue_item);
-            merge(branch, payload, repo); 
-        });
+        merge(branch, payload, repo);         
+    })
+}
+
+var git_fetch_checkout = function (payload, cb) {
+    run_git(payload, ['fetch'], function (err) {
+        if (err) return cb(err);
+        run_git(payload, ['checkout', branch], cb);
     });
 }
 

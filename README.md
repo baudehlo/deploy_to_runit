@@ -99,11 +99,14 @@ other configuration system such as Chef.
 In main.json the following options are available:
 
 * email_to (required) - the email to send success/failure messages to
+* email_from (required) - the email address messages are from
 * branch_map - a hash of branch to root folder name mappings. Default: `{"master": "/var/apps"}`
+* test_map - a hash of branch to test folder name distinct from those in branch_map. Default: `{}`
 * remote_hosts - a list of remote hosts to send the payload to (for multi-server deployment). Default: []
 * git_user - the username to run commands as. Default: deploy
 * git_command - the path to git. Default: /usr/bin/git
 * sv_command - the path to "sv". Default: /usr/bin/sv
+* test_command - the command to run for testing. Default: "make test"
 * restart_command - the command passed to "sv" to restart the server. Default: force-restart
 * dont_restart_server - a list of projects not to restart after updating. Default: []
 
@@ -156,6 +159,22 @@ of your projects. Simply setup the branch_map as follows:
 
 And make sure you checkout the staging branch of your apps into the
 /var/staging-apps folder.
+
+Testing
+-------
+
+If you specify a `test_map`, you can elect to have your project tested before
+updating it in the live folder (which can dangerously overwrite files).
+
+    "test_map": {
+        "master": "/var/apps/master-qa",
+        "staging": "/var/apps/staging-qa"
+    }
+
+When this a key exists for this, the project will be fetched in that folder,
+and the `test_command` will be run for that project. If this command exits
+with a non-zero exit status, an email will generated and we will not continue
+to deploy it. The `pre-run` command will be executed before testing begins.
 
 Thanks
 ------
