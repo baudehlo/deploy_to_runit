@@ -119,7 +119,15 @@ var prerun_test = function (branch, payload, repo) {
 
 var run_the_tests = function (branch, payload, repo) {
     var test_command = get_config(payload, 'test_command', 'make test');
-    run_command(test_command, [], function (err) {
+    var params = [];
+    if (/\s/.test(test_command)) {
+        var command_list = test_command.split(/\s+/);
+        test_command = command_list.shift();
+        params = command_list.concat(params);
+    }
+    var git_user = get_config(payload, 'git_user', 'deploy');
+    var command = ['-u', git_user, test_command].concat(options);
+    run_command('chpst', command, function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
         // Tests passed.
         console.log("Tests passed. Installing live.");
@@ -153,11 +161,6 @@ var run_git = function (payload, options, cb) {
 
 var run_command = function (command, params, callback) {
     var callback_called = false;
-    if (/\s/.test(command)) {
-        var command_list = command.split(/\s+/);
-        command = command_list.shift();
-        params = command_list.concat(params);
-    }
     var cmd = child_process.spawn(command, params, { env: {} });
     cmd.stdout.pipe(process.stdout);
     cmd.stderr.pipe(process.stderr);
