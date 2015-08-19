@@ -119,14 +119,12 @@ var prerun_test = function (branch, payload, repo) {
 
 var run_the_tests = function (branch, payload, repo) {
     var test_command = get_config(payload, 'test_command', 'make test');
-    var params = [];
     if (/\s/.test(test_command)) {
         var command_list = test_command.split(/\s+/);
         test_command = command_list.shift();
-        params = command_list.concat(params);
     }
     var git_user = get_config(payload, 'git_user', 'deploy');
-    var command = ['-u', git_user, test_command];
+    var command = ['-u', git_user, test_command].concat(command_list);
     run_command('chpst', command, function (err) {
         if (err) return handle_error(err, payload, next_queue_item);
         // Tests passed.
