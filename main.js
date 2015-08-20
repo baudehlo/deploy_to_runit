@@ -119,14 +119,11 @@ var prerun_test = function (branch, payload, repo) {
 
 var run_the_tests = function (branch, payload, repo) {
     var test_command = get_config(payload, 'test_command', 'make test');
-    if (/\s/.test(test_command)) {
-        var command_list = test_command.split(/\s+/);
-        test_command = command_list.shift();
-    }
     var git_user = get_config(payload, 'git_user', 'deploy');
-    var command = ['-u', git_user, test_command].concat(command_list);
-    run_command('chpst', command, function (err) {
+    child_process.exec("chpst -u " + git_user + " " + test_command, function (err, stdout, stderr) {
         if (err) return handle_error(err, payload, next_queue_item);
+        console.log(stdout);
+        console.log(stderr);
         // Tests passed.
         console.log("Tests passed. Installing live.");
         run_live(branch, payload, repo);
